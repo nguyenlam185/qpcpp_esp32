@@ -113,7 +113,7 @@ void QActive::start(QPrioSpec const prioSpec,
 	
     /* task name provided by the user in QF_setTaskName() or default name */
     char const *taskName = (m_thread != nullptr)
-                             ? static_cast<char const *>(m_thread)
+                             ? reinterpret_cast<char const *>(m_thread)
                              : static_cast<char const *>("AO");
 
     /* statically create the FreeRTOS task for the AO */
@@ -138,7 +138,7 @@ void QActive::setAttr(std::uint32_t attr1, void const *attr2) {
     switch (attr1) {
         case TASK_NAME_ATTR:
             /* temporarily store the name */
-            m_thread = const_cast<void *>(attr2); /* cast 'const' away */
+            m_thread = reinterpret_cast<TaskHandle_t>(const_cast<void *>(attr2)); /* cast 'const' away */
             break;
         /* ... */
     }
