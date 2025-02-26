@@ -42,11 +42,8 @@
 #include "esp_freertos_hooks.h"
 
 using namespace QP;
-static constexpr unsigned LED_BUILTIN = 13;
-// QS facilities
+static constexpr unsigned LED_BUILTIN = 2;
 
-// un-comment if QS instrumentation needed
-//#define QS_ON
 // BSP functions
 static void tickHook_ESP32(void); /*Tick hook for QP */
 static uint8_t const l_TickHook = static_cast<uint8_t>(0);
@@ -69,12 +66,6 @@ void BSP::init(void) {
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(115200); // run serial port at 115200 baud rate
     QS_INIT(nullptr);
-#ifdef QS_ON
-    // setup the QS filters...
-    QS_GLB_FILTER(QP::QS_SM_RECORDS); // state machine records
-    QS_GLB_FILTER(QP::QS_AO_RECORDS); // active object records
-    QS_GLB_FILTER(QP::QS_UA_RECORDS); // all user records
-#endif
 }
 //............................................................................
 void BSP::ledOff(void) {
@@ -86,45 +77,10 @@ void BSP::ledOn(void) {
     digitalWrite(LED_BUILTIN, HIGH);
     Serial.println("led on");
 }
-
 //............................................................................
-void QSpy_Task(void *) {
-  while(1)
-  {
-    // transmit QS outgoing data (QS-TX)
-    uint16_t len = Serial.availableForWrite();
-    if (len > 0U) { // any space available in the output buffer?
-        uint8_t const *buf = QS::getBlock(&len);
-        if (buf) {
-            Serial.write(buf, len); // asynchronous and non-blocking
-        }
-    }
-
-    // receive QS incoming data (QS-RX)
-    len = Serial.available();
-    if (len > 0U) {
-        do {
-            QP::QS::rxPut(Serial.read());
-        } while (--len > 0U);
-        QS::rxParse();
-    }
-    delay(100);
-  };
-}
-
 void QF::onStartup(void) {
     esp_register_freertos_tick_hook_for_cpu(tickHook_ESP32, QP_CPU_NUM);
     QS_OBJ_DICTIONARY(&l_TickHook);
-#ifdef QS_ON
-    xTaskCreatePinnedToCore(
-                    QSpy_Task,   /* Function to implement the task */
-                    "QSPY", /* Name of the task */
-                    10000,      /* Stack size in words */
-                    NULL,       /* Task input parameter */
-                    configMAX_PRIORITIES-1,          /* Priority of the task */
-                    NULL,       /* Task handle. */
-                    QP_CPU_NUM);  /* Core where the task should run */
-#endif
 }
 //............................................................................
 extern "C" Q_NORETURN Q_onAssert(char const * const module, int location) {
@@ -141,55 +97,3 @@ extern "C" Q_NORETURN Q_onAssert(char const * const module, int location) {
     for (;;) { // sit in an endless loop for now
     }
 }
-
-//----------------------------------------------------------------------------
-// QS callbacks...
-//............................................................................
-namespace QP {
-#ifdef Q_SPY
-namespace QS {
-bool onStartup(void const * arg) {
-    static uint8_t qsTxBuf[1024]; // buffer for QS transmit channel (QS-TX)
-    static uint8_t qsRxBuf[128];  // buffer for QS receive channel (QS-RX)
-    initBuf  (qsTxBuf, sizeof(qsTxBuf));
-    rxInitBuf(qsRxBuf, sizeof(qsRxBuf));
-    return true; // return success
-}
-//............................................................................
-void onCommand(uint8_t cmdId, uint32_t param1,
-                       uint32_t param2, uint32_t param3)
-{
-    (void)cmdId;
-    (void)param1;
-    (void)param2;
-    (void)param3;
-}
-//............................................................................
-void onCleanup(void) {
-}
-//............................................................................
-QP::QTimeEvtCtr onGetTime(void) {
-    return millis();
-}
-//............................................................................
-void onFlush(void) {
-#ifdef QS_ON
-    uint16_t len = 0xFFFFU; // big number to get as many bytes as available
-    uint8_t const *buf = QS::getBlock(&len); // get continguous block of data
-    while (buf != nullptr) { // data available?
-        Serial.write(buf, len); // might poll until all bytes fit
-        len = 0xFFFFU; // big number to get as many bytes as available
-        buf = QS::getBlock(&len); // try to get more data
-    }
-    Serial.flush(); // wait for the transmission of outgoing data to complete
-#endif // QS_ON
-}
-//............................................................................
-void onReset(void) {
-    esp_restart();
-}
-} // namespace QS
-
-#endif // Q_SPY
-
-} // namespace QP

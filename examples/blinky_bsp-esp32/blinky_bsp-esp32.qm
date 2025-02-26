@@ -90,15 +90,11 @@ public:
 #include &quot;blinky.hpp&quot;  // Blinky application interface
 #include &quot;bsp.hpp&quot;     // Board Support Package (BSP)
 #include &quot;Arduino.h&quot;
-#include &quot;esp_log.h&quot;
 #include &quot;esp_freertos_hooks.h&quot;
 
 using namespace QP;
-static constexpr unsigned LED_BUILTIN = 13;
-// QS facilities
+static constexpr unsigned LED_BUILTIN = 2;
 
-// un-comment if QS instrumentation needed
-//#define QS_ON
 // BSP functions
 static void tickHook_ESP32(void); /*Tick hook for QP */
 static uint8_t const l_TickHook = static_cast&lt;uint8_t&gt;(0);
@@ -121,62 +117,21 @@ void BSP::init(void) {
     pinMode(LED_BUILTIN, OUTPUT);
     Serial.begin(115200); // run serial port at 115200 baud rate
     QS_INIT(nullptr);
-#ifdef QS_ON
-    // setup the QS filters...
-    QS_GLB_FILTER(QP::QS_SM_RECORDS); // state machine records
-    QS_GLB_FILTER(QP::QS_AO_RECORDS); // active object records
-    QS_GLB_FILTER(QP::QS_UA_RECORDS); // all user records
-#endif
 }
 //............................................................................
 void BSP::ledOff(void) {
     digitalWrite(LED_BUILTIN, LOW);
-    log_i(&quot;led off&quot;);
+    Serial.println(&quot;led off&quot;);
 }
 //............................................................................
 void BSP::ledOn(void) {
     digitalWrite(LED_BUILTIN, HIGH);
-    log_i(&quot;led on&quot;);
+    Serial.println(&quot;led on&quot;);
 }
-
 //............................................................................
-void QSpy_Task(void *) {
-  while(1)
-  {
-    // transmit QS outgoing data (QS-TX)
-    uint16_t len = Serial.availableForWrite();
-    if (len &gt; 0U) { // any space available in the output buffer?
-        uint8_t const *buf = QS::getBlock(&amp;len);
-        if (buf) {
-            Serial.write(buf, len); // asynchronous and non-blocking
-        }
-    }
-
-    // receive QS incoming data (QS-RX)
-    len = Serial.available();
-    if (len &gt; 0U) {
-        do {
-            QP::QS::rxPut(Serial.read());
-        } while (--len &gt; 0U);
-        QS::rxParse();
-    }
-    delay(100);
-  };
-}
-
 void QF::onStartup(void) {
     esp_register_freertos_tick_hook_for_cpu(tickHook_ESP32, QP_CPU_NUM);
     QS_OBJ_DICTIONARY(&amp;l_TickHook);
-#ifdef QS_ON
-    xTaskCreatePinnedToCore(
-                    QSpy_Task,   /* Function to implement the task */
-                    &quot;QSPY&quot;, /* Name of the task */
-                    10000,      /* Stack size in words */
-                    NULL,       /* Task input parameter */
-                    configMAX_PRIORITIES-1,          /* Priority of the task */
-                    NULL,       /* Task handle. */
-                    QP_CPU_NUM);  /* Core where the task should run */
-#endif
 }
 //............................................................................
 extern &quot;C&quot; Q_NORETURN Q_onAssert(char const * const module, int location) {
@@ -185,63 +140,14 @@ extern &quot;C&quot; Q_NORETURN Q_onAssert(char const * const module, int locati
     //
     (void)module;
     (void)location;
-    log_e(&quot;QP Assert module: %s @ %d&quot;, module, location);
+    Serial.print(&quot;QP Assert module: &quot;);
+    Serial.print(module);
+    Serial.print(&quot;@ &quot;);
+    Serial.println(location);
     QF_INT_DISABLE(); // disable all interrupts
     for (;;) { // sit in an endless loop for now
     }
-}
-
-//----------------------------------------------------------------------------
-// QS callbacks...
-//............................................................................
-namespace QP {
-#ifdef Q_SPY
-namespace QS {
-bool onStartup(void const * arg) {
-    static uint8_t qsTxBuf[1024]; // buffer for QS transmit channel (QS-TX)
-    static uint8_t qsRxBuf[128];  // buffer for QS receive channel (QS-RX)
-    initBuf  (qsTxBuf, sizeof(qsTxBuf));
-    rxInitBuf(qsRxBuf, sizeof(qsRxBuf));
-    return true; // return success
-}
-//............................................................................
-void onCommand(uint8_t cmdId, uint32_t param1,
-                       uint32_t param2, uint32_t param3)
-{
-    (void)cmdId;
-    (void)param1;
-    (void)param2;
-    (void)param3;
-}
-//............................................................................
-void onCleanup(void) {
-}
-//............................................................................
-QP::QTimeEvtCtr onGetTime(void) {
-    return millis();
-}
-//............................................................................
-void onFlush(void) {
-#ifdef QS_ON
-    uint16_t len = 0xFFFFU; // big number to get as many bytes as available
-    uint8_t const *buf = QS::getBlock(&amp;len); // get continguous block of data
-    while (buf != nullptr) { // data available?
-        Serial.write(buf, len); // might poll until all bytes fit
-        len = 0xFFFFU; // big number to get as many bytes as available
-        buf = QS::getBlock(&amp;len); // try to get more data
-    }
-    Serial.flush(); // wait for the transmission of outgoing data to complete
-#endif // QS_ON
-}
-//............................................................................
-void onReset(void) {
-    esp_restart();
-}
-} // namespace QS
-
-#endif // Q_SPY
-
-} // namespace QP</text>
+}</text>
   </file>
   <file name="blinky.hpp">
    <text>#ifndef BLINKY_HPP
@@ -259,7 +165,7 @@ $declare${AOs::AO_Blinky}
 #endif // BLINKY_HPP
 </text>
   </file>
-  <file name="main.cpp">
+  <file name="blinky_bsp-esp32.ino">
    <text>#include &quot;qpcpp.hpp&quot;   // QP-C++ framework
 #include &quot;blinky.hpp&quot;  // Blinky application interface
 #include &quot;bsp.hpp&quot;     // Board Support Package (BSP)
@@ -285,7 +191,7 @@ void setup() {
     AO_Blinky-&gt;start(1U, // priority
                      blinky_queueSto, // queue storage for events
                      Q_DIM(blinky_queueSto), //len of queue
-                     stack, 
+                     stack,
                      sizeof(stack));
 
     QF::run(); // Normally QF Run is located in a loop 
