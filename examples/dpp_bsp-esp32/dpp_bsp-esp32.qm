@@ -411,21 +411,17 @@ m_fork[n] = FREE;</action>
    <text>#ifndef BSP_HPP
 #define BSP_HPP
 
-class BSP {
-public:
+namespace BSP {
     enum { TICKS_PER_SEC = CONFIG_FREERTOS_HZ} ;
-    static void init(void);
-    static void displayPaused(uint8_t const paused);
-    static void displayPhilStat(uint8_t const n, char_t const *stat);
-    static void terminate(int16_t const result);
+    void init(void);
+    void displayPaused(uint8_t const paused);
+    void displayPhilStat(uint8_t const n, char_t const *stat);
 
-    static void randomSeed(uint32_t const seed); // random seed
-    static uint32_t random(void);                // pseudo-random generator
-    static QP::QTimeEvtCtr think_rnd_time();
-    static QP::QTimeEvtCtr eat_rnd_time();
+    void randomSeed(uint32_t const seed); // random seed
+    uint32_t random(void);                // pseudo-random generator
 
-    static void ledOff(void);
-    static void ledOn(void);
+    void ledOff(void);
+    void ledOn(void);
 };
 
 #endif // BSP_HPP
@@ -439,108 +435,25 @@ public:
 #include &lt;Arduino.h&gt;
 #include &quot;esp_freertos_hooks.h&quot;
 
-#ifndef LED_BUILTIN  //If current ESP32 board does not define LED_BUILTIN
-static constexpr unsigned LED_BUILTIN=2U;
+//If current ESP32 board does not define LED_BUILTIN
+#ifndef LED_BUILTIN  
+#define LED_BUILTIN 2U
 #endif
 
-using namespace QP;
 //----------------------------------------------------------------------------
 // BSP functions
 static void tickHook_ESP32(void)
 {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     /* process time events for rate 0 */
-    QTimeEvt::TICK_FROM_ISR(&amp;xHigherPriorityTaskWoken, &amp;l_TIMER_ID);
+    QP::QTimeEvt::TICK_FROM_ISR(&amp;xHigherPriorityTaskWoken, &amp;l_TIMER_ID);
     /* notify FreeRTOS to perform context switch from ISR, if needed */
     if(xHigherPriorityTaskWoken) {
         portYIELD_FROM_ISR();
     }
-#ifndef Q_SPY
-    if (Serial.available() &gt; 0) {
-        switch (Serial.read()) { // read the incoming byte
-            case 'p':
-            case 'P':
-                static QEvt const pauseEvt(PAUSE_SIG);
-                QF::PUBLISH(&amp;pauseEvt, &amp;l_TIMER_ID);
-                break;
-            case 's':
-            case 'S':
-                static QEvt const serveEvt(SERVE_SIG);
-                QF::PUBLISH(&amp;serveEvt, &amp;l_TIMER_ID);
-                break;
-        }
-    }
-#endif
-}
-
-void BSP::init(void) {
-    // initialize the hardware used in this sketch...
-    // NOTE: interrupts are configured and started later in QF::onStartup()
-    pinMode(LED_BUILTIN, OUTPUT);
-    randomSeed(1234); // seed the Random Number Generator
-    Serial.begin(115200); // set the highest stanard baud rate of 115200 bps
-    QS_INIT(nullptr);
-#ifdef Q_SPY
-    // output QS dictionaries
-    QS_OBJ_DICTIONARY(&amp;l_TIMER_ID);
-    QS_USR_DICTIONARY(PHILO_STAT);
-
-    // setup the QS filters...
-    QS_GLB_FILTER(QP::QS_SM_RECORDS); // state machine records
-    QS_GLB_FILTER(QP::QS_AO_RECORDS); // active object records
-    QS_GLB_FILTER(QP::QS_UA_RECORDS); // all user records
-#else
-    Serial.print(&quot;QP-C++: &quot;);
-    Serial.print(QP_VERSION_STR);
-    Serial.println(&quot;&quot;);
-#endif
 }
 //............................................................................
-void BSP::displayPhilStat(uint8_t n, char_t const *stat) {
-#ifdef Q_SPY
-    QS_BEGIN_ID(PHILO_STAT, AO_Philo[n]-&gt;m_prio) // app-specific record begin
-        QS_U8(1, n);  // Philo number
-        QS_STR(stat); // Philo status
-    QS_END()
-#else
-    Serial.print(&quot;Philosopher &quot;);
-    Serial.write(48+n);
-    Serial.print(&quot; &quot;);
-    Serial.println(stat);
-#endif
-}
-//............................................................................
-void BSP::displayPaused(uint8_t paused) {
-    char const *msg = paused ? &quot;Paused ON&quot; : &quot;Paused OFF&quot;;
-#ifndef Q_SPY
-    Serial.println(msg);
-#endif
-}
-//............................................................................
-void BSP::ledOff(void) {
-    digitalWrite(LED_BUILTIN, LOW);
-}
-//............................................................................
-void BSP::ledOn(void) {
-    digitalWrite(LED_BUILTIN, HIGH);
-}
-//............................................................................
-static uint32_t l_rnd; // random seed
-
-void BSP::randomSeed(uint32_t seed) {
-    l_rnd = seed;
-}
-//............................................................................
-uint32_t BSP::random(void) { // a very cheap pseudo-random-number generator
-    // &quot;Super-Duper&quot; Linear Congruential Generator (LCG)
-    // LCG(2^32, 3*7*11*13*23, 0, seed)
-    //
-    uint32_t rnd = l_rnd * (3U*7U*11U*13U*23U);
-    l_rnd = rnd; // set for the next time
-    return (rnd &gt;&gt; 8);
-}
-//............................................................................
-void QF::onStartup(void) {
+void QP::QF::onStartup(void) {
     esp_register_freertos_tick_hook_for_cpu(tickHook_ESP32, QP_CPU_NUM);
 }
 //............................................................................
@@ -557,7 +470,55 @@ extern &quot;C&quot; Q_NORETURN Q_onAssert(char const * const module, int locati
     QF_INT_DISABLE(); // disable all interrupts
     for (;;) { // sit in an endless loop for now
     }
-}</text>
+}
+//............................................................................
+namespace BSP {
+void init(void) {
+    // initialize the hardware used in this sketch...
+    // NOTE: interrupts are configured and started later in QF::onStartup()
+    pinMode(LED_BUILTIN, OUTPUT);
+    randomSeed(1234); // seed the Random Number Generator
+    Serial.begin(115200); // set the highest stanard baud rate of 115200 bps
+    Serial.print(&quot;QP-C++: &quot;);
+    Serial.print(QP_VERSION_STR);
+    Serial.println(&quot;&quot;);
+}
+//............................................................................
+void displayPhilStat(uint8_t n, char_t const *stat) {
+
+    Serial.print(&quot;Philosopher &quot;);
+    Serial.write(48+n);
+    Serial.print(&quot; &quot;);
+    Serial.println(stat);
+}
+//............................................................................
+void displayPaused(uint8_t paused) {
+    char const *msg = paused ? &quot;Paused ON&quot; : &quot;Paused OFF&quot;;
+}
+//............................................................................
+void ledOff(void) {
+    digitalWrite(LED_BUILTIN, LOW);
+}
+//............................................................................
+void ledOn(void) {
+    digitalWrite(LED_BUILTIN, HIGH);
+}
+//............................................................................
+static uint32_t l_rnd; // random seed
+
+void randomSeed(uint32_t seed) {
+    l_rnd = seed;
+}
+//............................................................................
+uint32_t random(void) { // a very cheap pseudo-random-number generator
+    // &quot;Super-Duper&quot; Linear Congruential Generator (LCG)
+    // LCG(2^32, 3*7*11*13*23, 0, seed)
+    //
+    uint32_t rnd = l_rnd * (3U*7U*11U*13U*23U);
+    l_rnd = rnd; // set for the next time
+    return (rnd &gt;&gt; 8);
+}
+} // namespace BSP</text>
   </file>
   <!--${.::dpp.hpp}-->
   <file name="dpp.hpp">

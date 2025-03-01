@@ -41,10 +41,11 @@
 #include "Arduino.h"
 #include "esp_freertos_hooks.h"
 
-using namespace QP;
-static constexpr unsigned LED_BUILTIN = 2;
+// If current ESP32 board does not define LED_BUILTIN
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2U
+#endif
 
-// BSP functions
 static void tickHook_ESP32(void); /*Tick hook for QP */
 static uint8_t const l_TickHook = static_cast<uint8_t>(0);
 
@@ -58,27 +59,8 @@ static void tickHook_ESP32(void)
         portYIELD_FROM_ISR();
     }
 }
-
 //............................................................................
-void BSP::init(void) {
-    // initialize the hardware used in this sketch...
-    // NOTE: interrupts are configured and started later in QF::onStartup()
-    pinMode(LED_BUILTIN, OUTPUT);
-    Serial.begin(115200); // run serial port at 115200 baud rate
-    QS_INIT(nullptr);
-}
-//............................................................................
-void BSP::ledOff(void) {
-    digitalWrite(LED_BUILTIN, LOW);
-    Serial.println("led off");
-}
-//............................................................................
-void BSP::ledOn(void) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    Serial.println("led on");
-}
-//............................................................................
-void QF::onStartup(void) {
+void QP::QF::onStartup(void) {
     esp_register_freertos_tick_hook_for_cpu(tickHook_ESP32, QP_CPU_NUM);
     QS_OBJ_DICTIONARY(&l_TickHook);
 }
@@ -97,3 +79,23 @@ extern "C" Q_NORETURN Q_onAssert(char const * const module, int location) {
     for (;;) { // sit in an endless loop for now
     }
 }
+//............................................................................
+namespace BSP {
+void init(void) {
+    // initialize the hardware used in this sketch...
+    // NOTE: interrupts are configured and started later in QF::onStartup()
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial.begin(115200); // run serial port at 115200 baud rate
+    QS_INIT(nullptr);
+}
+//............................................................................
+void ledOff(void) {
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.println("led off");
+}
+//............................................................................
+void ledOn(void) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.println("led on");
+}
+} // namespace BSP

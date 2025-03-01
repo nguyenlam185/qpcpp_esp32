@@ -74,13 +74,12 @@ QS_SIG_DICTIONARY(TIMEOUT_SIG, nullptr);</action>
    <text>#ifndef BSP_HPP
 #define BSP_HPP
 
-class BSP {
-public:
+namespace BSP {
     enum { TICKS_PER_SEC = CONFIG_FREERTOS_HZ} ;
-    static void init(void);
-    static void ledOff(void);
-    static void ledOn(void);
-};
+    void init(void);
+    void ledOff(void);
+    void ledOn(void);
+}
 
 #endif // BSP_HPP
 </text>
@@ -92,10 +91,11 @@ public:
 #include &quot;Arduino.h&quot;
 #include &quot;esp_freertos_hooks.h&quot;
 
-using namespace QP;
-static constexpr unsigned LED_BUILTIN = 2;
+// If current ESP32 board does not define LED_BUILTIN
+#ifndef LED_BUILTIN
+#define LED_BUILTIN 2U
+#endif
 
-// BSP functions
 static void tickHook_ESP32(void); /*Tick hook for QP */
 static uint8_t const l_TickHook = static_cast&lt;uint8_t&gt;(0);
 
@@ -109,27 +109,8 @@ static void tickHook_ESP32(void)
         portYIELD_FROM_ISR();
     }
 }
-
 //............................................................................
-void BSP::init(void) {
-    // initialize the hardware used in this sketch...
-    // NOTE: interrupts are configured and started later in QF::onStartup()
-    pinMode(LED_BUILTIN, OUTPUT);
-    Serial.begin(115200); // run serial port at 115200 baud rate
-    QS_INIT(nullptr);
-}
-//............................................................................
-void BSP::ledOff(void) {
-    digitalWrite(LED_BUILTIN, LOW);
-    Serial.println(&quot;led off&quot;);
-}
-//............................................................................
-void BSP::ledOn(void) {
-    digitalWrite(LED_BUILTIN, HIGH);
-    Serial.println(&quot;led on&quot;);
-}
-//............................................................................
-void QF::onStartup(void) {
+void QP::QF::onStartup(void) {
     esp_register_freertos_tick_hook_for_cpu(tickHook_ESP32, QP_CPU_NUM);
     QS_OBJ_DICTIONARY(&amp;l_TickHook);
 }
@@ -147,7 +128,27 @@ extern &quot;C&quot; Q_NORETURN Q_onAssert(char const * const module, int locati
     QF_INT_DISABLE(); // disable all interrupts
     for (;;) { // sit in an endless loop for now
     }
-}</text>
+}
+//............................................................................
+namespace BSP {
+void init(void) {
+    // initialize the hardware used in this sketch...
+    // NOTE: interrupts are configured and started later in QF::onStartup()
+    pinMode(LED_BUILTIN, OUTPUT);
+    Serial.begin(115200); // run serial port at 115200 baud rate
+    QS_INIT(nullptr);
+}
+//............................................................................
+void ledOff(void) {
+    digitalWrite(LED_BUILTIN, LOW);
+    Serial.println(&quot;led off&quot;);
+}
+//............................................................................
+void ledOn(void) {
+    digitalWrite(LED_BUILTIN, HIGH);
+    Serial.println(&quot;led on&quot;);
+}
+} // namespace BSP</text>
   </file>
   <file name="blinky.hpp">
    <text>#ifndef BLINKY_HPP

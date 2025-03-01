@@ -1,30 +1,32 @@
 //============================================================================
 // QP configuration file (generic)
-//
-// Copyright (C) 2005 Quantum Leaps, LLC. All rights reserved.
+// Last updated for version: 7.3.0
+// Last updated on: 2023-10-30
 //
 //                   Q u a n t u m  L e a P s
 //                   ------------------------
 //                   Modern Embedded Software
 //
+// Copyright (C) 2005 Quantum Leaps, LLC. All rights reserved.
+//
 // SPDX-License-Identifier: GPL-3.0-or-later OR LicenseRef-QL-commercial
 //
-// This software is dual-licensed under the terms of the open-source GNU
-// General Public License (GPL) or under the terms of one of the closed-
-// source Quantum Leaps commercial licenses.
+// This software is dual-licensed under the terms of the open source GNU
+// General Public License version 3 (or any later version), or alternatively,
+// under the terms of one of the closed source Quantum Leaps commercial
+// licenses.
+//
+// The terms of the open source GNU General Public License version 3
+// can be found at: <www.gnu.org/licenses/gpl-3.0>
+//
+// The terms of the closed source Quantum Leaps commercial licenses
+// can be found at: <www.state-machine.com/licensing>
 //
 // Redistributions in source code must retain this top-level comment block.
 // Plagiarizing this software to sidestep the license obligations is illegal.
 //
-// NOTE:
-// The GPL (see <www.gnu.org/licenses/gpl-3.0>) does NOT permit the
-// incorporation of the QP/C software into proprietary programs. Please
-// contact Quantum Leaps for commercial licensing options, which expressly
-// supersede the GPL and are designed explicitly for licensees interested
-// in using QP/C in closed-source proprietary applications.
-//
-// Quantum Leaps contact information:
-// <www.state-machine.com/licensing>
+// Contact information:
+// <www.state-machine.com>
 // <info@state-machine.com>
 //============================================================================
 #ifndef QP_CONFIG_HPP_
@@ -32,10 +34,17 @@
 
 //-------- <<< Use Configuration Wizard in Context Menu >>> -----------------
 
+// <n>NOTE: Requires command-line macro: QP_CONFIG
+// <i>This qp_config.h header file is activated only when the macro
+// <i>QP_CONFIG is defined on the command-line to the compiler
+// <n>-------------------------------------------
+
 // <o>QP API compatibility version (QP_API_VERSION)
 //   <0=>  0   (Maximum compatibility)
+//   <580=>580 (QP 5.8.0 or newer)
+//   <660=>660 (QP 6.6.0 or newer)
 //   <691=>691 (QP 6.9.1 or newer)
-//   <734=>7.3.4 (QP 7.3.4 or newer)
+//   <700=>700 (QP 7.0.0 or newer)
 //   <9999=>9999 (Latest only)
 // <i>QP API backwards compatibility with the QP/C API version.
 // <i>Lower QP_API_VERSION values enable backwards compatibility
@@ -46,7 +55,7 @@
 // <i>backwards compatibility. Conversely, QP_API_VERSION==9999 means
 // <i>that no backwards compatibility layer should be enabled.
 // <i>Default: 0 (All supported)
-#define QP_API_VERSION 734
+#define QP_API_VERSION 0
 
 //..........................................................................
 // <h>QP Functional Safety (FuSa) Subsystem (Q_UNSAFE)
@@ -59,19 +68,19 @@
 // <i>  * Hard-limits for all loops
 // <i>  * Memory Isolation by means of Memory Protection Unit (MPU)
 
-// <c3>Disable QP FuSa in development (NOT recommended)
+// <c3>Disable QP FuSa in development
 // <i>Disable assertions and other self monitoring features
 // <i>in development build configurations (NDEBUG undefined).
-// <i>NOTE: Disabling safety *violates* functional safety standards.
+// <i>VIOLATES functional safety standards. NOT recommended !!!
 //#ifndef NDEBUG
 //#define Q_UNSAFE
 //#endif
 // </c>
 
-// <c3>Disable QP FuSa in production release (NOT recommended)
-// <i>Disable assertions and other safety features
+// <c3>Disable QP FuSa in production release
+// <i>Disable assertions and other self monitoring features
 // <i>in the release build configurations (NDEBUG defined).
-// <i>NOTE: Disabling safety *violates* functional safety standards.
+// <i>VIOLATES functional safety standards. NOT recommended !!!
 //#ifdef NDEBUG
 //#define Q_UNSAFE
 //#endif
@@ -80,7 +89,7 @@
 // </h>
 
 //..........................................................................
-// <h>QEP Event Processor (Events)
+// <h>QEP Event Processor
 // <i>Events and state machines.
 
 // <o>Event signal size (Q_SIGNAL_SIZE)
@@ -94,13 +103,13 @@
 // </h>
 
 //..........................................................................
-// <h>QF Framework (Active Objects)
+// <h>QF Framework
 // <i>Active Object framework
 
 // <o>Maximum # Active Objects (QF_MAX_ACTIVE) <1-64>
 // <i>Maximum # Active Objects in the system <1..64>
 // <i>Default: 32
-#define QF_MAX_ACTIVE  configMAX_PRIORITIES
+#define QF_MAX_ACTIVE  8U
 
 // <o>Maximum # event pools (QF_MAX_EPOOL)
 // <0=>0 no event pools
@@ -119,6 +128,21 @@
 // <i>Maximum # clock tick rates for time events <1..15>
 // <i>Default: 1
 #define QF_MAX_TICK_RATE 1U
+
+// <c1>Dynamic Event Constructor (QEVT_DYN_CTOR)
+// <i>Dynamic Event Constructor (RAII)
+//#define QEVT_DYN_CTOR
+// </c>
+
+// <c1>Provide destructors for QP classes
+// <i>Destructors for classes
+//#define Q_XTOR
+// </c>
+
+// <c1>Active Object stop API (QACTIVE_CAN_STOP)
+// <i>Enable Active Object stop API (Not recommended)
+//#define QACTIVE_CAN_STOP
+// </c>
 
 // <o>Event size (QF_EVENT_SIZ_SIZE)
 //   <1U=>1
@@ -139,6 +163,7 @@
 // <o>Event queue counter size (QF_EQUEUE_CTR_SIZE)
 //   <1U=>1 (default)
 //   <2U=>2
+//   <4U=>4
 // <i>Size of event queue counter [bytes]
 // <i>Default: 1 (255 events maximum in a queue)
 #define QF_EQUEUE_CTR_SIZE  1U
@@ -159,71 +184,16 @@
 // <i>Default: 2 (64K bytes maximum block size)
 #define QF_MPOOL_SIZ_SIZE 2U
 
-// <c2>Enable event parameter initialization (QEVT_PAR_INIT)
-// <i>Initialize parameters of dynamic events at allocation
-// <i>(Resource Acquisition Is Initialization (RAII) for dynamic events)
-//#define QEVT_PAR_INIT
-// </c>
-
-// <c1>Provide destructors for QP classes
-// <i>Presence of destructors pulls in the C++ delete() opeator
-// <i>NOTE: Not recommended
-//#define Q_XTOR
-// </c>
-
-// <c1>Enable active object stop API (QACTIVE_CAN_STOP)
-// <i>NOTE: Not recommended
-//#define QACTIVE_CAN_STOP
-// </c>
-
-// <c1>Enable context switch callback *without* QS (QF_ON_CONTEXT_SW)
-// <i>Context switch callback QF_onContextSw() when Q_SPY is undefined.
-//#ifndef Q_SPY
-//#define QF_ON_CONTEXT_SW
-//#endif
-// </c>
-
-// <c1>Enable context switch callback *with* QS (QF_ON_CONTEXT_SW)
-// <i>Context switch callback QF_onContextSw() when Q_SPY is defined.
-//#ifdef Q_SPY
-//#define QF_ON_CONTEXT_SW
-//#endif
-// </c>
-
-// <c2>Enable memory isolation (QF_MEM_ISOLATE)
-// <i>Memory isolation (supported in SafeQP only, requires MPU)
-// <i>NOTE: implies QF_ON_CONTEXT_SW.
-//#define QF_MEM_ISOLATE
-// </c>
-
 // </h>
 
-//..........................................................................
-// <h>QS Software Tracing (Q_SPY)
-// <i>Target-resident component of QP/Spy software tracing system
-// <i>(tracing instrumentation and command-input).
-// <i>NOTE: The QS software tracing instrumentation is activated only when
-// <i>the macro Q_SPY is defined on the command-line to the compiler.
-// <i>Typically, Q_SPY is defined only in the "spy" build configuration.
+// Select the CPU at which the QP Framework will be attached
+#define QP_PINNED_TO_CORE_0
+//#define QP_PINNED_TO_CORE_1
 
-// <o>QS timestamp size (QS_TIME_SIZE)
-//   <1U=>1
-//   <2U=>2
-//   <4U=>4 (default)
-// <i>Size of the timestamp in QS [bytes]
-// <i>Default: 4 (2^32 dynamic range)
-#define QS_TIME_SIZE 4U
-
-// <o>QS buffer counter size (QS_CTR_SIZE)
-//   <1U=>1
-//   <2U=>2 (default)
-//   <4U=>4
-// <i>Size of the counter in the internal QS buffer [bytes]
-// <i>Default: 2 (64K bytes in QS buffer)
-#define QS_CTR_SIZE 2U
-
-// </h>
-
+// Select QACTIVE_THREAD_TYPE
+//   <0U=> Dynamic thread
+//   <1U=> Static thread
+#define QP_STATIC_THREAD    0U
 //------------- <<< end of configuration section >>> -----------------------
 
 #endif // QP_CONFIG_HPP_

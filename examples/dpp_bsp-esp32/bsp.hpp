@@ -38,21 +38,17 @@
 #ifndef BSP_HPP
 #define BSP_HPP
 
-class BSP {
-public:
+namespace BSP {
     enum { TICKS_PER_SEC = CONFIG_FREERTOS_HZ} ;
-    static void init(void);
-    static void displayPaused(uint8_t const paused);
-    static void displayPhilStat(uint8_t const n, char_t const *stat);
-    static void terminate(int16_t const result);
+    void init(void);
+    void displayPaused(uint8_t const paused);
+    void displayPhilStat(uint8_t const n, char_t const *stat);
 
-    static void randomSeed(uint32_t const seed); // random seed
-    static uint32_t random(void);                // pseudo-random generator
-    static QP::QTimeEvtCtr think_rnd_time();
-    static QP::QTimeEvtCtr eat_rnd_time();
+    void randomSeed(uint32_t const seed); // random seed
+    uint32_t random(void);                // pseudo-random generator
 
-    static void ledOff(void);
-    static void ledOn(void);
+    void ledOff(void);
+    void ledOn(void);
 };
 
 #endif // BSP_HPP
